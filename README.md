@@ -59,91 +59,94 @@ IoT-потоків\
 
 ## 📊 4.Основні результати
 
-# 4.1 Batch.size та linger.ms тестування
+## 4.1 Batch.size та linger.ms тестування
 
-## 🧪 Таблиця 1 – Ключові результати (9 тестів)
+## Таблиця 1 - Ключові результати (19 тестів)
 
-| Конфігурація | Records/sec | Avg Latency (ms) | P95 Latency (ms) | Success Rate (%) | Використання |
-| ------------ | ----------- | ---------------- | ---------------- | ---------------- | ------------ |
-| 16KB_0ms     | 403.66      | 2.46             | 3.5              | 100.0            | Real-time    |
-| 16KB_10ms    | 75.93       | 13.15            | 13.95            | 100.0            | Balanced     |
-| 16KB_50ms    | 18.95       | 52.76            | 54.29            | 100.0            | Batch        |
-| 64KB_0ms     | 450.35      | 2.21             | 3.28             | 100.0            | Real-time    |
-| 64KB_10ms    | 75.55       | 13.22            | 14.6             | 100.0            | Balanced     |
-| 64KB_50ms    | 18.86       | 52.99            | 53.79            | 100.0            | Batch        |
-| 256KB_0ms    | 555.73      | 1.78             | 2.46             | 100.0            | Real-time    |
-| 256KB_10ms   | 77.8        | 12.84            | 13.57            | 100.0            | Balanced     |
-| 256KB_50ms   | 18.94       | 52.78            | 53.52            | 100.0            | Batch        |
-
----
-
-## 🏆 Найкращі результати
-
-- **Максимальний throughput:** `256KB_0ms` → **555.73 rec/sec**
-- **Мінімальна latency:** `256KB_0ms` → **1.78 ms**
-- **Оптимальний баланс:** `256KB_10ms` → для агрегації **1000 DER пристроїв**
-
----
-
-## 📊 Аналіз по типах використання
-
-### Real-time (`linger_ms = 0`)
-
-- **Середній throughput:** `469.9 rec/sec`
-- **Середня latency:** `2.1 ms`
-
-### Balanced (`linger_ms = 10`)
-
-- **Середній throughput:** `76.4 rec/sec`
-- **Середня latency:** `13.1 ms`
-
-### Batch (`linger_ms = 50`)
-
-- **Середній throughput:** `18.9 rec/sec`
-- **Середня latency:** `52.8 ms`
+| Конфігурація | Records/sec | Avg Latency (ms) | P50 Latency (ms) | P95 Latency (ms) | Success Rate (%) | Використання |
+| ------------ | ----------- | ---------------- | ---------------- | ---------------- | ---------------- | ------------ |
+| 4KB_0ms      | 421.72      | 2.35             | 2.13             | 3.96             | 100.0            | Ultra-low    |
+| 4KB_1ms      | 297.74      | 3.34             | 3.23             | 4.3              | 100.0            | SCADA        |
+| 4KB_2ms      | 203.2       | 4.91             | 4.75             | 6.26             | 100.0            | SCADA        |
+| 4KB_3ms      | 165.02      | 6.04             | 5.84             | 7.52             | 100.0            | SCADA        |
+| 4KB_5ms      | 122.17      | 8.17             | 8.42             | 10.65            | 100.0            | SCADA        |
+| 8KB_0ms      | 227.07      | 4.39             | 3.67             | 9.21             | 100.0            | Ultra-low    |
+| 8KB_1ms      | 266.98      | 3.73             | 3.54             | 5.24             | 100.0            | SCADA        |
+| 8KB_2ms      | 242.16      | 4.11             | 4.71             | 5.78             | 100.0            | SCADA        |
+| 8KB_3ms      | 162.27      | 6.15             | 5.89             | 7.88             | 100.0            | SCADA        |
+| 8KB_5ms      | 121.3       | 8.23             | 8.03             | 9.68             | 100.0            | SCADA        |
+| 16KB_0ms     | 492.09      | 2.02             | 1.77             | 3.16             | 100.0            | Real-time    |
+| 16KB_10ms    | 75.55       | 13.22            | 13.07            | 14.34            | 100.0            | Balanced     |
+| 16KB_50ms    | 18.82       | 53.13            | 52.94            | 54.44            | 100.0            | Batch        |
+| 64KB_0ms     | 502.85      | 1.97             | 1.86             | 2.95             | 100.0            | Real-time    |
+| 64KB_10ms    | 77.54       | 12.88            | 12.82            | 13.67            | 100.0            | Balanced     |
+| 64KB_50ms    | 18.89       | 52.91            | 52.83            | 53.74            | 100.0            | Batch        |
+| 256KB_0ms    | 405.98      | 2.45             | 2.24             | 4.33             | 100.0            | Real-time    |
+| 256KB_10ms   | 68.45       | 14.59            | 14.39            | 17.14            | 100.0            | Balanced     |
+| 256KB_50ms   | 18.65       | 53.6             | 53.31            | 55.58            | 100.0            | Batch        |
 
 ---
 
-## 💡 Рекомендації для DER системи
+## 🏆 НАЙКРАЩІ РЕЗУЛЬТАТИ:
 
-### Для Virtual Power Plant aggregation з 1000 пристроїв:
-
-- ⚠️ **Цільовий throughput `1000+ rec/sec` не досягнуто**
-- ✅ **Досягнута цільова latency `≤ 100 ms`**
+- **Max throughput:** 64KB_0ms → 502.85 rec/sec
+- **Min latency:** 64KB_0ms → 1.97 ms
+- **Оптимальний баланс:** 64KB_10ms для aggregation 1000 DER пристроїв
 
 ---
 
-## 🎯 Оптимальні налаштування
+## 📊 АНАЛІЗ ПО ТИПАХ ВИКОРИСТАННЯ:
 
-- **Максимальний throughput:**  
-  `batch_size=262144`, `linger_ms=0`
+**Real-time (0ms):**
 
-- **Мінімальна latency:**  
-  `batch_size=262144`, `linger_ms=0`
+- Середній throughput: 409.9 rec/sec
+- Середня latency: 2.6 ms
+
+**Balanced (10ms):**
+
+- Середній throughput: 163.9 rec/sec
+- Середня latency: 7.8 ms
+
+**Batch (50ms):**
+
+- Середній throughput: 18.8 rec/sec
+- Середня latency: 53.2 ms
+
+---
+
+## 🏭 SCADA ІНТЕГРАЦІЯ:
+
+- Оптимальна конфігурація: 4KB_0ms
+- P95 Latency: 3.96 ms
+- P50 Latency: 2.13 ms
+- Network Jitter: 0.88 ms
+
+---
+
+## ⚡ ULTRA-LOW LATENCY:
+
+- Найкраща конфігурація: 4KB_0ms
+- Середня latency: 2.35 ms
+- P95 Latency: 3.96 ms
+
+---
+
+## 💡 РЕКОМЕНДАЦІЇ ДЛЯ DER СИСТЕМИ:
+
+Для Virtual Power Plant aggregation з 1000 пристроїв:
+
+- ⚠️ Цільовий throughput 1000+ rec/sec не досягнуто
+- ✅ Досягнуто цільову latency ≤100ms
+
+---
+
+## 🎯 ОПТИМАЛЬНІ НАЛАШТУВАННЯ:
+
+- Для максимального throughput: `batch_size=65536`, `linger_ms=0`
+- Для мінімальної latency: `batch_size=65536`, `linger_ms=0`
+- Для SCADA інтеграції: `batch_size=4096`, `linger_ms=0`
+- Для ultra-low latency: `batch_size=4096`, `linger_ms=0`
 
 ## 📂 Додатки
 
 ### A. Генератор даних (Python)
-
-```python
-import random, json
-N = 12
-
-def generate_powerplant_data():
-    return {
-        "device_id": f"TESC_{random.randint(1, N):03d}",
-        "fuel_flow": round(random.uniform(120.0, 250.0), 2),
-        "steam_pressure": round(random.uniform(14.0, 23.0), 2),
-        "temperature": round(random.uniform(480.0, 560.0), 1),
-        "timestamp": "2025-09-27T12:00:00Z"
-    }
-
-for _ in range(3):
-    print(json.dumps(generate_powerplant_data(), ensure_ascii=False))
-```
-
-### B. Тестові команди Kafka
-
-```bash
-kafka-producer-perf-test.sh   --topic test_powerplant   --num-records 100000   --record-size 256   --throughput -1   --producer-props bootstrap.servers=localhost:9092 batch.size=16384 linger.ms=0 compression.type=none
-```

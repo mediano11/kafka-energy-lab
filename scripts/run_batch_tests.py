@@ -64,18 +64,18 @@ def analyze_results():
     
     # Читаємо результати producer
     producer_results = []
-    if os.path.exists("batch_test_results.json"):
+    if os.path.exists("data/batch_test_results.json"):
         try:
-            with open("batch_test_results.json", 'r', encoding='utf-8') as f:
+            with open("data/batch_test_results.json", 'r', encoding='utf-8') as f:
                 producer_results = json.load(f)
         except Exception as e:
             print(f"❌ Помилка читання результатів producer: {e}")
     
     # Читаємо результати consumer
     consumer_results = {}
-    if os.path.exists("consumer_metrics.json"):
+    if os.path.exists("data/consumer_metrics.json"):
         try:
-            with open("consumer_metrics.json", 'r', encoding='utf-8') as f:
+            with open("data/consumer_metrics.json", 'r', encoding='utf-8') as f:
                 consumer_results = json.load(f)
         except Exception as e:
             print(f"❌ Помилка читання результатів consumer: {e}")
@@ -90,28 +90,44 @@ def create_final_report(producer_results, consumer_results):
     print("="*100)
     
     # Таблиця результатів
-    print("\nТаблиця 1 - Ключові результати (9 тестів)")
-    print("| Конфігурація | Records/sec | Avg Latency (ms) | P95 Latency (ms) | Success Rate (%) | Використання |")
-    print("|--------------|-------------|------------------|------------------|------------------|--------------|")
+    print("\nТаблиця 1 - Ключові результати (19 тестів)")
+    print("| Конфігурація | Records/sec | Avg Latency (ms) | P50 Latency (ms) | P95 Latency (ms) | Success Rate (%) | Використання |")
+    print("|--------------|-------------|------------------|------------------|------------------|------------------|--------------|")
     
     valid_results = [r for r in producer_results if 'error' not in r]
+    
+    if not valid_results:
+        print("❌ Немає валідних результатів для відображення")
+        print("Можливі причини:")
+        print("- Всі тести завершилися з помилками")
+        print("- Файл результатів порожній або пошкоджений")
+        print("- Проблеми з підключенням до Kafka")
+        return
     
     for result in valid_results:
         config = result['config_name']
         throughput = result['throughput_records_per_sec']
         avg_latency = result['avg_latency_ms']
+        p50_latency = result.get('p50_latency_ms', result['avg_latency_ms'])
         p95_latency = result['p95_latency_ms']
         success_rate = result['success_rate']
         
         # Визначаємо тип використання
-        if result['linger_ms'] == 0:
+        if result['batch_size'] <= 8192:
+            if result['linger_ms'] == 0:
+                usage = "Ultra-low"
+            elif result['linger_ms'] <= 5:
+                usage = "SCADA"
+            else:
+                usage = "Low-latency"
+        elif result['linger_ms'] == 0:
             usage = "Real-time"
         elif result['linger_ms'] <= 10:
             usage = "Balanced"
         else:
             usage = "Batch"
         
-        print(f"| {config:<12} | {throughput:<11} | {avg_latency:<16} | {p95_latency:<16} | {success_rate:<16.1f} | {usage:<12} |")
+        print(f"| {config:<12} | {throughput:<11} | {avg_latency:<16} | {p50_latency:<16} | {p95_latency:<16} | {success_rate:<16.1f} | {usage:<12} |")
     
     print("|--------------|-------------|------------------|------------------|------------------|--------------|")
     
@@ -153,6 +169,36 @@ def create_final_report(producer_results, consumer_results):
             avg_batch_latency = sum(r['avg_latency_ms'] for r in batch_results) / len(batch_results)
             print(f"Batch (50ms): Середній throughput {avg_batch_throughput:.1f} rec/sec, latency {avg_batch_latency:.1f} ms")
         
+        # SCADA аналіз
+        scada_results = [r for r in valid_results if r['batch_size'] <= 8192 and r['linger_ms'] <= 5]
+        if scada_results:
+            best_scada = min(scada_results, key=lambda x: x['p95_latency_ms'])
+            print(f"\n🏭 SCADA ІНТЕГРАЦІЯ:")
+            print(f"Оптимальна конфігурація: {best_scada['config_name']}")
+            print(f"P95 Latency: {best_scada['p95_latency_ms']} ms")
+            print(f"P50 Latency: {best_scada['p50_latency_ms']} ms")
+            print(f"Network Jitter: {best_scada.get('latency_std_dev', 0)} ms")
+        
+        # Ultra-low latency аналіз
+        ultra_low_results = [r for r in valid_results if r['batch_size'] <= 8192 and r['linger_ms'] == 0]
+        if ultra_low_results:
+            best_ultra = min(ultra_low_results, key=lambda x: x['avg_latency_ms'])
+            print(f"\n⚡ ULTRA-LOW LATENCY:")
+            print(f"Найкраща конфігурація: {best_ultra['config_name']}")
+            print(f"Середня latency: {best_ultra['avg_latency_ms']} ms")
+            print(f"P95 Latency: {best_ultra['p95_latency_ms']} ms")
+        
+        # Consumer lag аналіз
+        print(f"\n📊 CONSUMER LAG АНАЛІЗ:")
+        if consumer_results:
+            for test_id, metrics in consumer_results.items():
+                if metrics:
+                    print(f"Тест {test_id}:")
+                    print(f"  Середній Consumer Lag: {metrics.get('avg_consumer_lag_ms', 0)} ms")
+                    print(f"  P95 Consumer Lag: {metrics.get('p95_consumer_lag_ms', 0)} ms")
+                    print(f"  Network Jitter: {metrics.get('avg_network_jitter_ms', 0)} ms")
+                    print(f"  Критичні алерти: {metrics.get('critical_alerts_count', 0)}")
+        
         # Рекомендації для DER системи
         print(f"\n💡 РЕКОМЕНДАЦІЇ ДЛЯ DER СИСТЕМИ:")
         print(f"Для Virtual Power Plant aggregation з 1000 пристроїв:")
@@ -171,12 +217,23 @@ def create_final_report(producer_results, consumer_results):
         print(f"Для максимального throughput: batch_size={max_throughput['batch_size']}, linger_ms={max_throughput['linger_ms']}")
         print(f"Для мінімальної latency: batch_size={min_latency['batch_size']}, linger_ms={min_latency['linger_ms']}")
         
+        # SCADA рекомендації
+        if scada_results:
+            print(f"Для SCADA інтеграції: batch_size={best_scada['batch_size']}, linger_ms={best_scada['linger_ms']}")
+        
+        # Ultra-low latency рекомендації
+        if ultra_low_results:
+            print(f"Для ultra-low latency: batch_size={best_ultra['batch_size']}, linger_ms={best_ultra['linger_ms']}")
+        
         # Зберігаємо звіт у файл
         save_report_to_file(valid_results)
 
 def save_report_to_file(results):
     """Зберігає звіт у файл"""
     try:
+        # Створюємо папку data якщо не існує
+        os.makedirs("data", exist_ok=True)
+        
         report = {
             'timestamp': datetime.now().isoformat(),
             'test_results': results,
@@ -186,10 +243,10 @@ def save_report_to_file(results):
             }
         }
         
-        with open("batch_test_final_report.json", 'w', encoding='utf-8') as f:
+        with open("data/batch_test_final_report.json", 'w', encoding='utf-8') as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
         
-        print(f"\n📄 Звіт збережено у файл: batch_test_final_report.json")
+        print(f"\n📄 Звіт збережено у файл: data/batch_test_final_report.json")
     except Exception as e:
         print(f"❌ Помилка збереження звіту: {e}")
 
@@ -232,9 +289,9 @@ def main():
         print(f"\n✅ ТЕСТУВАННЯ ЗАВЕРШЕНО!")
         print(f"Загальна тривалість: {total_duration:.1f} секунд ({total_duration/60:.1f} хвилин)")
         print(f"Результати збережено у файлах:")
-        print(f"  - batch_test_results.json (результати producer)")
-        print(f"  - consumer_metrics.json (метрики consumer)")
-        print(f"  - batch_test_final_report.json (фінальний звіт)")
+        print(f"  - data/batch_test_results.json (результати producer)")
+        print(f"  - data/consumer_metrics.json (метрики consumer)")
+        print(f"  - data/batch_test_final_report.json (фінальний звіт)")
         
     except KeyboardInterrupt:
         print("\n🛑 Тестування перервано користувачем")

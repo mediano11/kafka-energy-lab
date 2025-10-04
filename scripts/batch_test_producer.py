@@ -8,6 +8,7 @@ import json
 import time
 import random
 import threading
+import statistics
 from datetime import datetime
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
@@ -26,9 +27,21 @@ class BatchTestProducer:
         self.producer = None
         self.test_results = {}
         
-        # Тестові комбінації параметрів
+        # Розширені тестові комбінації для ultra-low latency та SCADA
         self.test_configs = [
-            # batch_size, linger_ms, config_name
+            # Ultra-low latency тести (до 8KB)
+            (4096, 0, "4KB_0ms"),      # Ultra-low latency
+            (4096, 1, "4KB_1ms"),      # Детальний аналіз linger
+            (4096, 2, "4KB_2ms"),
+            (4096, 3, "4KB_3ms"),
+            (4096, 5, "4KB_5ms"),
+            (8192, 0, "8KB_0ms"),      # Ultra-low latency
+            (8192, 1, "8KB_1ms"),      # Детальний аналіз linger
+            (8192, 2, "8KB_2ms"),
+            (8192, 3, "8KB_3ms"),
+            (8192, 5, "8KB_5ms"),
+            
+            # Стандартні тести для порівняння
             (16384, 0, "16KB_0ms"),
             (16384, 10, "16KB_10ms"),
             (16384, 50, "16KB_50ms"),
@@ -167,6 +180,14 @@ class BatchTestProducer:
             
         except Exception as e:
             logger.error(f"Помилка під час тесту {config_name}: {e}")
+            # Повертаємо помилковий результат
+            return {
+                'config_name': config_name,
+                'batch_size': batch_size,
+                'linger_ms': linger_ms,
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
         finally:
             producer.close()
         
@@ -175,13 +196,21 @@ class BatchTestProducer:
         total_duration = end_time - start_time
         
         # Статистика latency
-        if latencies:
-            avg_latency = sum(latencies) / len(latencies)
-            min_latency = min(latencies)
-            max_latency = max(latencies)
-            p95_latency = sorted(latencies)[int(len(latencies) * 0.95)]
-        else:
-            avg_latency = min_latency = max_latency = p95_latency = 0
+        try:
+            if latencies:
+                avg_latency = sum(latencies) / len(latencies)
+                min_latency = min(latencies)
+                max_latency = max(latencies)
+                sorted_latencies = sorted(latencies)
+                p50_latency = sorted_latencies[int(len(latencies) * 0.50)]
+                p95_latency = sorted_latencies[int(len(latencies) * 0.95)]
+                p99_latency = sorted_latencies[int(len(latencies) * 0.99)]
+                latency_std_dev = statistics.stdev(latencies) if len(latencies) > 1 else 0
+            else:
+                avg_latency = min_latency = max_latency = p50_latency = p95_latency = p99_latency = latency_std_dev = 0
+        except Exception as e:
+            logger.error(f"Помилка розрахунку статистики latency: {e}")
+            avg_latency = min_latency = max_latency = p50_latency = p95_latency = p99_latency = latency_std_dev = 0
         
         # Throughput
         throughput = sent_count / total_duration if total_duration > 0 else 0
@@ -200,7 +229,10 @@ class BatchTestProducer:
             'avg_latency_ms': round(avg_latency, 2),
             'min_latency_ms': round(min_latency, 2),
             'max_latency_ms': round(max_latency, 2),
+            'p50_latency_ms': round(p50_latency, 2),
             'p95_latency_ms': round(p95_latency, 2),
+            'p99_latency_ms': round(p99_latency, 2),
+            'latency_std_dev': round(statistics.stdev(latencies) if len(latencies) > 1 else 0, 2),
             'timestamp': datetime.now().isoformat()
         }
         
@@ -208,7 +240,10 @@ class BatchTestProducer:
         logger.info(f"  Відправлено: {sent_count}/{num_records} ({test_result['success_rate']:.1f}%)")
         logger.info(f"  Throughput: {test_result['throughput_records_per_sec']} rec/sec")
         logger.info(f"  Avg Latency: {test_result['avg_latency_ms']} ms")
+        logger.info(f"  P50 Latency: {test_result['p50_latency_ms']} ms")
         logger.info(f"  P95 Latency: {test_result['p95_latency_ms']} ms")
+        logger.info(f"  P99 Latency: {test_result['p99_latency_ms']} ms")
+        logger.info(f"  Latency StdDev: {test_result['latency_std_dev']} ms")
         
         return test_result
     
@@ -262,9 +297,13 @@ class BatchTestProducer:
         
         return all_results
     
-    def save_results(self, results: List[Dict[str, Any]], filename: str = "batch_test_results.json"):
+    def save_results(self, results: List[Dict[str, Any]], filename: str = "data/batch_test_results.json"):
         """Зберігає результати тестів у JSON файл"""
         try:
+            # Створюємо папку data якщо не існує
+            import os
+            os.makedirs("data", exist_ok=True)
+            
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2, ensure_ascii=False)
             logger.info(f"Результати збережено у файл: {filename}")
@@ -276,29 +315,37 @@ class BatchTestProducer:
         print(f"\n{'='*100}")
         print("📊 РЕЗУЛЬТАТИ ТЕСТУВАННЯ BATCH.SIZE ТА LINGER.MS")
         print(f"{'='*100}")
-        print(f"{'Конфігурація':<15} {'Records/sec':<12} {'Avg Latency':<12} {'P95 Latency':<12} {'Success Rate':<12} {'Використання':<15}")
-        print(f"{'-'*100}")
+        print(f"{'Конфігурація':<15} {'Records/sec':<12} {'Avg Latency':<12} {'P50 Latency':<12} {'P95 Latency':<12} {'Success Rate':<12} {'Використання':<15}")
+        print(f"{'-'*120}")
         
         for result in results:
             if 'error' in result:
-                print(f"{result['config_name']:<15} {'ERROR':<12} {'ERROR':<12} {'ERROR':<12} {'ERROR':<12} {'ERROR':<15}")
+                print(f"{result['config_name']:<15} {'ERROR':<12} {'ERROR':<12} {'ERROR':<12} {'ERROR':<12} {'ERROR':<12} {'ERROR':<15}")
                 continue
             
             config = result['config_name']
             throughput = result['throughput_records_per_sec']
             avg_latency = result['avg_latency_ms']
+            p50_latency = result.get('p50_latency_ms', result['avg_latency_ms'])
             p95_latency = result['p95_latency_ms']
             success_rate = result['success_rate']
             
             # Визначаємо тип використання
-            if result['linger_ms'] == 0:
+            if result['batch_size'] <= 8192:
+                if result['linger_ms'] == 0:
+                    usage = "Ultra-low"
+                elif result['linger_ms'] <= 5:
+                    usage = "SCADA"
+                else:
+                    usage = "Low-latency"
+            elif result['linger_ms'] == 0:
                 usage = "Real-time"
             elif result['linger_ms'] <= 10:
                 usage = "Balanced"
             else:
                 usage = "Batch"
             
-            print(f"{config:<15} {throughput:<12} {avg_latency:<12} {p95_latency:<12} {success_rate:<12.1f}% {usage:<15}")
+            print(f"{config:<15} {throughput:<12} {avg_latency:<12} {p50_latency:<12} {p95_latency:<12} {success_rate:<12.1f}% {usage:<15}")
         
         print(f"{'-'*100}")
         
@@ -313,17 +360,39 @@ class BatchTestProducer:
             print(f"Max throughput: {max_throughput['config_name']} → {max_throughput['throughput_records_per_sec']} rec/sec")
             print(f"Min latency: {min_latency['config_name']} → {min_latency['avg_latency_ms']} ms")
             
-            # Рекомендації для DER системи
+            # Рекомендації для DER системи та SCADA
             print(f"\n💡 РЕКОМЕНДАЦІЇ ДЛЯ DER СИСТЕМИ:")
             print(f"Для Virtual Power Plant aggregation рекомендується:")
             print(f"- Високий throughput: {max_throughput['config_name']}")
             print(f"- Низька latency: {min_latency['config_name']}")
             
+            # SCADA рекомендації
+            scada_results = [r for r in valid_results if r['batch_size'] <= 8192 and r['linger_ms'] <= 5]
+            if scada_results:
+                best_scada = min(scada_results, key=lambda x: x['p95_latency_ms'])
+                print(f"\n🏭 SCADA ІНТЕГРАЦІЯ:")
+                print(f"- Оптимальна конфігурація: {best_scada['config_name']}")
+                print(f"- P95 Latency: {best_scada['p95_latency_ms']} ms")
+                print(f"- P50 Latency: {best_scada['p50_latency_ms']} ms")
+                print(f"- Стандартне відхилення: {best_scada['latency_std_dev']} ms")
+            
+            # Ultra-low latency аналіз
+            ultra_low_results = [r for r in valid_results if r['batch_size'] <= 8192 and r['linger_ms'] == 0]
+            if ultra_low_results:
+                best_ultra = min(ultra_low_results, key=lambda x: x['avg_latency_ms'])
+                print(f"\n⚡ ULTRA-LOW LATENCY:")
+                print(f"- Найкраща конфігурація: {best_ultra['config_name']}")
+                print(f"- Середня latency: {best_ultra['avg_latency_ms']} ms")
+                print(f"- P95 Latency: {best_ultra['p95_latency_ms']} ms")
+            
             # Оптимальний баланс
             balanced_results = [r for r in valid_results if 10 <= r['linger_ms'] <= 50 and r['batch_size'] >= 65536]
             if balanced_results:
-                optimal = max(balanced_results, key=lambda x: x['throughput_records_per_sec'] / x['avg_latency_ms'])
-                print(f"- Оптимальний баланс: {optimal['config_name']} для aggregation 1000 DER пристроїв")
+                optimal = max(balanced_results, key=lambda x: x['throughput_records_per_sec'] / max(x['avg_latency_ms'], 1))
+                print(f"\n⚖️ ОПТИМАЛЬНИЙ БАЛАНС:")
+                print(f"- Конфігурація: {optimal['config_name']} для aggregation 1000 DER пристроїв")
+                print(f"- Throughput: {optimal['throughput_records_per_sec']} rec/sec")
+                print(f"- Latency: {optimal['avg_latency_ms']} ms")
 
 def main():
     """Основна функція для запуску тестів"""
