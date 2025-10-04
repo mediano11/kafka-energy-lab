@@ -147,6 +147,80 @@ IoT-потоків\
 - Для SCADA інтеграції: `batch_size=4096`, `linger_ms=0`
 - Для ultra-low latency: `batch_size=4096`, `linger_ms=0`
 
+# 4.2 📦 Тестування алгоритмів стиснення Kafka Producer
+
+## 📊 Таблиця 2 - Compression порівняння
+
+| Алгоритм | Records/sec | Avg Latency (ms) | P50 Latency (ms) | P95 Latency (ms) | Compression Ratio | Рекомендація          |
+| -------- | ----------- | ---------------- | ---------------- | ---------------- | ----------------- | --------------------- |
+| none     | 277.99      | 3.58             | 3.28             | 5.17             | 0.0%              | Real-time критичні    |
+| snappy   | 272.05      | 3.66             | 3.48             | 4.91             | 55.0%             | SCADA баланс          |
+| lz4      | 283.59      | 3.51             | 3.35             | 4.24             | 60.0%             | DER aggregation       |
+| gzip     | 350.16      | 2.84             | 3.51             | 4.32             | 65.0%             | Bulk обробка          |
+| zstd     | 277.52      | 3.59             | 3.48             | 4.29             | 70.0%             | Максимальне стиснення |
+
+---
+
+## 🏆 Ключові висновки
+
+- **Найкраща performance:** `gzip` → 350.16 rec/sec
+- **Найкраще стискання:** `zstd` → 70.0%
+- **Найнижча latency:** `gzip` → 2.84 ms
+
+---
+
+## 🏭 SCADA рекомендації
+
+- Оптимальний алгоритм: **snappy**
+- P95 Latency: 4.91 ms
+- Compression Ratio: 55.0%
+
+---
+
+## ⚡ Ultra-low latency
+
+- Для критичних real-time систем: **none**
+- Latency: 3.58 ms
+- Compression: 0%
+
+---
+
+## ⚖️ Оптимальний баланс
+
+- Для DER системи: **snappy**
+- Throughput: 272.05 rec/sec
+- Latency: 3.66 ms
+- Compression: 55.0%
+
+---
+
+## 🚀 LZ4 рекомендації
+
+- Для **DER aggregation**:
+  - Throughput: 283.59 rec/sec
+  - Latency: 3.51 ms
+  - Compression: 60.0%
+
+---
+
+## 🗜️ GZIP рекомендації
+
+- Для **bulk обробки**:
+  - Throughput: 350.16 rec/sec
+  - Latency: 2.84 ms
+  - Compression: 65.0%
+
+---
+
+## 💎 ZSTD рекомендації
+
+- Для **максимального стиснення**:
+  - Throughput: 277.52 rec/sec
+  - Latency: 3.59 ms
+  - Compression: 70.0%
+
+---
+
 ## 📂 Додатки
 
 ### A. Генератор даних (Python)
