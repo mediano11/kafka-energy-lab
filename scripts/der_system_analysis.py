@@ -400,26 +400,81 @@ def main():
     
     analyzer = DERSystemAnalyzer()
     
-    # Завантажуємо результати тестів (приклад даних)
-    batch_results = [
-        {'Конфігурація': '4KB_0ms', 'Records/sec': 421.72, 'Avg Latency (ms)': 2.35, 'P50 Latency (ms)': 2.13, 'P95 Latency (ms)': 3.96, 'Success Rate (%)': 100.0, 'Використання': 'Ultra-low'},
-        {'Конфігурація': '64KB_0ms', 'Records/sec': 502.85, 'Avg Latency (ms)': 1.97, 'P50 Latency (ms)': 1.86, 'P95 Latency (ms)': 2.95, 'Success Rate (%)': 100.0, 'Використання': 'Real-time'},
-        {'Конфігурація': '256KB_50ms', 'Records/sec': 18.65, 'Avg Latency (ms)': 53.6, 'P50 Latency (ms)': 53.31, 'P95 Latency (ms)': 55.58, 'Success Rate (%)': 100.0, 'Використання': 'Batch'}
-    ]
-    
-    compression_results = [
-        {'Алгоритм': 'none', 'Records/sec': 277.99, 'Avg Latency (ms)': 3.58, 'P50 Latency (ms)': 3.28, 'P95 Latency (ms)': 5.17, 'Compression Ratio': 0.0, 'Рекомендація': 'Real-time критичні'},
-        {'Алгоритм': 'snappy', 'Records/sec': 272.05, 'Avg Latency (ms)': 3.66, 'P50 Latency (ms)': 3.48, 'P95 Latency (ms)': 4.91, 'Compression Ratio': 55.0, 'Рекомендація': 'SCADA баланс'},
-        {'Алгоритм': 'lz4', 'Records/sec': 283.59, 'Avg Latency (ms)': 3.51, 'P50 Latency (ms)': 3.35, 'P95 Latency (ms)': 4.24, 'Compression Ratio': 60.0, 'Рекомендація': 'DER aggregation'},
-        {'Алгоритм': 'gzip', 'Records/sec': 350.16, 'Avg Latency (ms)': 2.84, 'P50 Latency (ms)': 3.51, 'P95 Latency (ms)': 4.32, 'Compression Ratio': 65.0, 'Рекомендація': 'Bulk обробка'},
-        {'Алгоритм': 'zstd', 'Records/sec': 277.52, 'Avg Latency (ms)': 3.59, 'P50 Latency (ms)': 3.48, 'P95 Latency (ms)': 4.29, 'Compression Ratio': 70.0, 'Рекомендація': 'Максимальне стиснення'}
-    ]
-    
-    partitioning_results = [
-        {'num_partitions': 10, 'strategy': 'unit_type', 'throughput_records_per_sec': 291.58, 'avg_latency_ms': 3.41, 'partition_balance_score': 1.00},
-        {'num_partitions': 15, 'strategy': 'round_robin', 'throughput_records_per_sec': 359.16, 'avg_latency_ms': 2.77, 'partition_balance_score': 0.99},
-        {'num_partitions': 20, 'strategy': 'unit_type', 'throughput_records_per_sec': 290.19, 'avg_latency_ms': 3.43, 'partition_balance_score': 0.95}
-    ]
+    # Завантажуємо результати тестів з реальних JSON у каталозі data/
+    import os
+    batch_results = []
+    compression_results = []
+    partitioning_results = []
+
+    # 1) Batch/Linger результати
+    try:
+        with open(os.path.join('data', 'batch_test_final_report.json'), 'r', encoding='utf-8') as f:
+            batch_json = json.load(f)
+            for r in batch_json.get('test_results', []):
+                config_name = f"{int(r.get('batch_size', 0))//1024 if r.get('batch_size') else r.get('batch_size')}KB_{int(r.get('linger_ms', 0))}ms"
+                avg_lat = r.get('avg_latency_ms')
+                p95_lat = r.get('p95_latency_ms')
+                # Класифікація використання
+                if r.get('linger_ms', 0) >= 50 or (avg_lat is not None and avg_lat >= 50):
+                    use_case = 'Batch'
+                elif avg_lat is not None and avg_lat <= 2.5:
+                    use_case = 'Real-time'
+                elif p95_lat is not None and p95_lat <= 10:
+                    use_case = 'SCADA'
+                else:
+                    use_case = 'Balanced'
+
+                batch_results.append({
+                    'Конфігурація': config_name,
+                    'Records/sec': r.get('throughput_records_per_sec'),
+                    'Avg Latency (ms)': avg_lat,
+                    'P50 Latency (ms)': r.get('p50_latency_ms'),
+                    'P95 Latency (ms)': p95_lat,
+                    'Success Rate (%)': r.get('success_rate'),
+                    'Використання': use_case
+                })
+    except FileNotFoundError:
+        print('⚠️ Не знайдено data/batch_test_final_report.json — пропускаю завантаження batch результатів')
+
+    # 2) Compression результати
+    try:
+        recommendation_by_algo = {
+            'none': 'Real-time критичні',
+            'snappy': 'SCADA баланс',
+            'lz4': 'DER aggregation',
+            'gzip': 'Bulk обробка',
+            'zstd': 'Максимальне стиснення',
+        }
+        with open(os.path.join('data', 'compression_test_final_report.json'), 'r', encoding='utf-8') as f:
+            comp_json = json.load(f)
+            for r in comp_json.get('test_results', []):
+                algo = r.get('compression_type')
+                compression_results.append({
+                    'Алгоритм': algo,
+                    'Records/sec': r.get('throughput_records_per_sec'),
+                    'Avg Latency (ms)': r.get('avg_latency_ms'),
+                    'P50 Latency (ms)': r.get('p50_latency_ms'),
+                    'P95 Latency (ms)': r.get('p95_latency_ms'),
+                    'Compression Ratio': r.get('compression_ratio_percent'),
+                    'Рекомендація': recommendation_by_algo.get(algo, '')
+                })
+    except FileNotFoundError:
+        print('⚠️ Не знайдено data/compression_test_final_report.json — пропускаю завантаження compression результатів')
+
+    # 3) Partitioning результати
+    try:
+        with open(os.path.join('data', 'partitioning_test_final_report.json'), 'r', encoding='utf-8') as f:
+            part_json = json.load(f)
+            for r in part_json.get('test_results', []):
+                partitioning_results.append({
+                    'num_partitions': r.get('num_partitions'),
+                    'strategy': r.get('strategy'),
+                    'throughput_records_per_sec': r.get('throughput_records_per_sec'),
+                    'avg_latency_ms': r.get('avg_latency_ms'),
+                    'partition_balance_score': r.get('partition_balance_score')
+                })
+    except FileNotFoundError:
+        print('⚠️ Не знайдено data/partitioning_test_final_report.json — пропускаю завантаження partitioning результатів')
     
     analyzer.load_batch_results(batch_results)
     analyzer.load_compression_results(compression_results)

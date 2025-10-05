@@ -4,16 +4,14 @@
 
 **Тема:** Дослідження продуктивності Apache Kafka для енергетичних
 IoT-потоків\
-**Варіант:** 8 Розподілені енергетичні ресурси (DER)
-**Підваріант:** A (оптимізація для real-time критичних алертів)
-**Виконав:** студент групи ТМ-52 Пестенков Дмітрій
-**Перевірив:** [ПІБ викладача]
-
----
+**Варіант:** 8 Розподілені енергетичні ресурси (DER)\
+**Підваріант:** A (Real-time focus)\
+**Виконав:** студент групи ТМ-52 Пестенков Дмітрій\
+**Перевірив:** Волков О. В.
 
 ## 🎯 Мета роботи
 
-Дослідити продуктивність Apache Kafka для потоків даних для розподілені енергетичних ресурсів.\
+Дослідити продуктивність Apache Kafka для потоків даних для розподілених енергетичних ресурсів.
 
 - Кількість пристроїв: 1000 дрібних генераторів (сонячні дахи, малі вітряки, батареї)
 - Частота передачі: Кожен пристрій відправляє дані кожні 60 секунд
@@ -24,7 +22,7 @@ IoT-потоків\
 
 - Тестувати batch.size до 8KB для ultra-low latency
 - Фокус на 50th та 95th percentile латентності
-- Аналіз критичних алертів для [специфічний параметр]
+- Аналіз критичних алертів
 - Рекомендації для SCADA інтеграції
   Унікальний аналіз:
 - Детальний аналіз впливу linger.ms=1,2,3,5ms
@@ -38,24 +36,20 @@ IoT-потоків\
 - Compression types: none, snappy, lz4, zstd
 - Partition counts: 3, 6, 12 партицій
 
----
-
 ## ⚙️ Тестове середовище
 
-- **OS:** Ubuntu 22.04\
-- **Java:** 11\
-- **Kafka:** 3.7.1 (single-broker), Zookeeper 3.8\
-- **Python:** 3.10.12\
-- **Hardware:** 4 vCores, 4 GB RAM, SSD
+- **OS:** Ubuntu 22.04
+- **Java:** 11
+- **Kafka:** 3.7.1 (single-broker), Zookeeper 3.8
+- **Python:** 3.10.12
+- **Hardware:** 12 cores, 8 RAM GB RAM, SSD
 
 ### Тестові дані
 
 - Тип: Розподілені енергетичні ресурси приватних домогосподарств
 - Формат: 256 байт
-- Кількість: 2000
-- Ключові параметри:
-
----
+- Кількість: 2000 згенерованих записів
+- Ключові параметри: power_output, efficiency, temperature, voltage, current, status, location, maintenance_hours, net_power, battery_soc, unit_type
 
 ## 📊 4.Основні результати
 
@@ -85,15 +79,11 @@ IoT-потоків\
 | 256KB_10ms   | 68.45       | 14.59            | 14.39            | 17.14            | 100.0            | Balanced     |
 | 256KB_50ms   | 18.65       | 53.6             | 53.31            | 55.58            | 100.0            | Batch        |
 
----
-
 ## 🏆 НАЙКРАЩІ РЕЗУЛЬТАТИ:
 
 - **Max throughput:** 64KB_0ms → 502.85 rec/sec
 - **Min latency:** 64KB_0ms → 1.97 ms
 - **Оптимальний баланс:** 64KB_10ms для aggregation 1000 DER пристроїв
-
----
 
 ## 📊 АНАЛІЗ ПО ТИПАХ ВИКОРИСТАННЯ:
 
@@ -112,8 +102,6 @@ IoT-потоків\
 - Середній throughput: 18.8 rec/sec
 - Середня latency: 53.2 ms
 
----
-
 ## 🏭 SCADA ІНТЕГРАЦІЯ:
 
 - Оптимальна конфігурація: 4KB_0ms
@@ -121,15 +109,11 @@ IoT-потоків\
 - P50 Latency: 2.13 ms
 - Network Jitter: 0.88 ms
 
----
-
 ## ⚡ ULTRA-LOW LATENCY:
 
 - Найкраща конфігурація: 4KB_0ms
 - Середня latency: 2.35 ms
 - P95 Latency: 3.96 ms
-
----
 
 ## 💡 РЕКОМЕНДАЦІЇ ДЛЯ DER СИСТЕМИ:
 
@@ -137,8 +121,6 @@ IoT-потоків\
 
 - ⚠️ Цільовий throughput 1000+ rec/sec не досягнуто
 - ✅ Досягнуто цільову latency ≤100ms
-
----
 
 ## 🎯 ОПТИМАЛЬНІ НАЛАШТУВАННЯ:
 
@@ -159,15 +141,11 @@ IoT-потоків\
 | gzip     | 350.16      | 2.84             | 3.51             | 4.32             | 65.0%             | Bulk обробка          |
 | zstd     | 277.52      | 3.59             | 3.48             | 4.29             | 70.0%             | Максимальне стиснення |
 
----
-
 ## 🏆 Ключові висновки
 
 - **Найкраща performance:** `gzip` → 350.16 rec/sec
 - **Найкраще стискання:** `zstd` → 70.0%
 - **Найнижча latency:** `gzip` → 2.84 ms
-
----
 
 ## 🏭 SCADA рекомендації
 
@@ -175,15 +153,11 @@ IoT-потоків\
 - P95 Latency: 4.91 ms
 - Compression Ratio: 55.0%
 
----
-
 ## ⚡ Ultra-low latency
 
 - Для критичних real-time систем: **none**
 - Latency: 3.58 ms
 - Compression: 0%
-
----
 
 ## ⚖️ Оптимальний баланс
 
@@ -192,16 +166,12 @@ IoT-потоків\
 - Latency: 3.66 ms
 - Compression: 55.0%
 
----
-
 ## 🚀 LZ4 рекомендації
 
 - Для **DER aggregation**:
   - Throughput: 283.59 rec/sec
   - Latency: 3.51 ms
   - Compression: 60.0%
-
----
 
 ## 🗜️ GZIP рекомендації
 
@@ -210,16 +180,12 @@ IoT-потоків\
   - Latency: 2.84 ms
   - Compression: 65.0%
 
----
-
 ## 💎 ZSTD рекомендації
 
 - Для **максимального стиснення**:
   - Throughput: 277.52 rec/sec
   - Latency: 3.59 ms
   - Compression: 70.0%
-
----
 
 # 📈 4.3 Партиціонування масштабованість
 
@@ -237,15 +203,11 @@ IoT-потоків\
 | 20       | geographic  | 272.21      | 3.66             | 3.52             | 4.76             | 0.98×          | Погано       |
 | 20       | round_robin | 280.61      | 3.54             | 3.52             | 4.27             | 0.98×          | Погано       |
 
----
-
 ## 🏆 Ключові висновки
 
 - **Max throughput:** `15 партицій, round_robin` → **359.16 rec/sec**
 - **Min latency:** `15 партицій, round_robin` → **2.77 ms**
 - **Best scaling balance:** `10 партицій, unit_type` → **1.00×**
-
----
 
 ## 📈 Аналіз масштабування
 
@@ -255,22 +217,16 @@ IoT-потоків\
 | 15                 | 306.97 rec/sec      | 1.07×   | Задовільно |
 | 20                 | 281.00 rec/sec      | 0.98×   | Погано     |
 
----
-
 ## 🏭 SCADA рекомендації
 
 - **Оптимальний варіант:** `20 партицій, unit_type`
 - P95 Latency: 4.13 ms
 - Throughput: 290.19 rec/sec
 
----
-
 ## ⚡ Ultra-low latency
 
 - **Для критичних систем:** `15 партицій, round_robin`
 - Avg Latency: **2.77 ms**
-
----
 
 ## ⚖️ Оптимальний баланс для DER систем
 
@@ -278,8 +234,6 @@ IoT-потоків\
 - Throughput: 359.16 rec/sec
 - Latency: 2.77 ms
 - Balance Score: 0.99
-
----
 
 ## 📋 Стратегії партиціонування
 
@@ -301,8 +255,6 @@ IoT-потоків\
   • Throughput: 359.16 rec/sec  
   • Balance: 0.99
 
----
-
 ## 🎯 Оптимальна конфігурація
 
 - **Кількість партицій:** `15`
@@ -311,72 +263,9 @@ IoT-потоків\
 - **Latency:** 2.77 ms
 - **Scaling Factor:** 1.07×
 
----
-
 # 📊 5. Аналіз та рекомендації
 
-### 📈 VPP Aggregation
-
-- **Batch:** `256KB_50ms`
-- **Throughput:** `18.65 rec/sec`
-- **Compression:** `zstd → 70.0%`
-- **Partitioning:** `10 партицій`, `unit_type`
-
-### 🤝 P2P Trading
-
-- **Batch:** `64KB_0ms`
-- **Throughput:** `502.85 rec/sec`
-- **Compression:** `lz4 → 60.0%`
-
-### ⚡ Grid Support
-
-- **Batch:** `4KB_0ms`
-- **Throughput:** `421.72 rec/sec`
-- **Compression:** `snappy → 55.0%`
-- **Partitioning:** `15 партицій`, `round_robin`
-
----
-
-## ⚖️ Trade-off Аналіз
-
-- **Головний trade-off:**  
-  `Latency vs Throughput` — критичний для real-time DER моніторингу.
-
-- **Критичний параметр:**  
-  `P95 Latency` має пріоритет у SCADA інтеграції.
-
-- **Рекомендована стратегія:**  
-  **Гібридний підхід** — використання різних конфігурацій для різних сценаріїв застосування.
-
----
-
-## ✅ Підсумок
-
-- **Оптимальна batch конфігурація:**  
-  `64KB_0ms` — для максимального throughput
-
-- **Оптимальне стиснення:**  
-  `zstd` — для battery_soc циклічних даних (70.0%)
-
-- **Оптимальне партиціонування:**  
-  `15 партицій`, стратегія `round_robin` — для балансованого навантаження
-
-## 🎯 Критерії Успіху
-
-| Показник          | Цільове Значення | Виконано |
-| ----------------- | ---------------- | -------- |
-| Target Throughput | ≥ 2000 rec/sec   | ❌       |
-| Max Latency       | ≤ 10 ms          | ✅       |
-| Min Compression   | ≥ 65%            | ✅       |
-| Min Scaling       | ≥ 1.5x           | ❌       |
-
----
-
-# ✅ ЕТАП 5: АНАЛІЗ ТА РЕКОМЕНДАЦІЇ ЗАВЕРШЕНО!
-
-## 📊 Детальний аналіз на основі реальних даних
-
-### 5.1 Специфічні конфігурації для DER Energy Monitoring System
+## Специфічні конфігурації для Розподілених енергетичних ресурсів (DER)
 
 #### 🔹 Real-time DER моніторинг
 
@@ -418,8 +307,6 @@ IoT-потоків\
 - **Throughput:** >270 rec/sec
 - **Використання:** Підтримка локальної енергомережі та SCADA інтеграція
 
----
-
 ### 5.2 Trade-off Аналіз
 
 - **Головний trade-off:**  
@@ -431,8 +318,6 @@ IoT-потоків\
 - **Рекомендована стратегія:**  
   Гібридний підхід — різні конфігурації для різних use cases
 
----
-
 ### 5.3 Критерії успіху та виконання
 
 | Критерій    | Значення       | Виконано                     |
@@ -441,8 +326,6 @@ IoT-потоків\
 | Latency     | 1.97ms < 10ms  | ✅                           |
 | Compression | 70% > 65%      | ✅                           |
 | Scaling     | 1.07x < 1.5x   | ❌ Частково                  |
-
----
 
 ### 5.4 Підсумкова таблиця рекомендацій
 
@@ -454,8 +337,6 @@ IoT-потоків\
 | Grid Support    | 32KB       | 10ms      | snappy      | 15         | 272.05 rec/sec | 3.66ms  | 55%           |
 | Архівування     | 256KB      | 50ms      | zstd        | 20         | 18.65 rec/sec  | 53.6ms  | 70%           |
 
----
-
 ### 5.5 Ключові висновки
 
 🏆 **Найкращі результати:**
@@ -464,8 +345,6 @@ IoT-потоків\
 - **Мінімальна latency:** 1.97ms (64KB_0ms)
 - **Найкраще стиснення:** 70% (zstd)
 - **Оптимальне партиціонування:** 15 партицій, `round_robin`
-
----
 
 ## 🎯 Рекомендована архітектура
 
@@ -490,8 +369,6 @@ IoT-потоків\
 - zstd compression
 - 20 партицій
 
----
-
 ## 📊 Очікувана продуктивність
 
 - **1000 DER пристроїв:** Підтримується з поточною конфігурацією
@@ -499,7 +376,85 @@ IoT-потоків\
 - **Data compression:** 70% економії місця для `battery_soc` даних
 - **Scaling:** 1.07x покращення з 15 партиціями
 
----
+# 📋 6. ВИСНОВКИ
+
+## 6.1 Досягнення цілей:
+
+### ✅ Досліджено вплив batch.size/linger.ms:
+
+- **19 тестових конфігурацій** протестовано з різними параметрами
+- **Ultra-low latency:** 4KB_0ms досягає 2.35ms latency
+- **Максимальний throughput:** 64KB_0ms досягає 502.85 rec/sec
+- **SCADA сумісність:** 4KB_1ms забезпечує 3.34ms latency для критичних систем
+
+### ✅ Порівняно compression алгоритми:
+
+- **5 алгоритмів** протестовано: none, snappy, lz4, gzip, zstd
+- **Найкраще стиснення:** zstd досягає 70% для battery_soc циклічних даних
+- **SCADA баланс:** snappy забезпечує 55% стиснення з 3.66ms latency
+- **Real-time критичні:** none забезпечує 0% стиснення з 3.58ms latency
+
+### ✅ Проаналізовано масштабованість:
+
+- **3 рівні партицій** протестовано: 10, 15, 20 партицій
+- **3 стратегії партиціонування:** unit_type, geographic, round_robin
+- **Оптимальний scaling:** 15 партицій, round_robin досягає 1.07x scaling
+- **Найкращий баланс:** 15 партицій забезпечує 359.16 rec/sec з 2.77ms latency
+
+### ✅ Розроблено рекомендації для DER Energy Monitoring System:
+
+- **Специфічні конфігурації** для 5 use cases: Real-time, VPP, P2P, Grid, Archive
+- **Гібридний підхід** з різними налаштуваннями для різних сценаріїв
+- **Trade-off аналіз** між latency, throughput, compression та scaling
+
+## 6.2 Ключовий результат:
+
+### 🎯 Оптимальна конфігурація для DER Energy Monitoring System:
+
+**64KB + 0ms + none + 15 партицій = 502.85 rec/sec при 1.97ms латентності**
+
+### 📊 Специфіка енергетичних даних:
+
+- **Циклічні battery_soc паттерни** дають відмінне стиснення (70% з zstd)
+- **Обмежені unit_type значення** (solar_roof, micro_wind, battery, combined) сприяють партиціонуванню
+- **Географічне групування** координат України (45.0-52.0°N, 22.0-40.0°E) оптимізує geographic партиціонування
+- **Повторювані JSON структури** з DER параметрами забезпечують ефективне стиснення
+
+## 6.3 Практичне значення:
+
+### 🏭 Результати можуть використовуватись для:
+
+1. **Впровадження real-time DER моніторингу:**
+
+   - Критичні системи: 4KB_0ms, none compression, 15 партицій
+   - SCADA інтеграція: 4KB_1ms, snappy compression, 15 партицій
+   - Забезпечує <3ms latency для 1000 DER пристроїв
+
+2. **Розвитку Virtual Power Plant (VPP):**
+
+   - VPP aggregation: 256KB_50ms, zstd compression, 15 партицій
+   - P2P trading: 64KB_10ms, lz4 compression, 15 партицій
+   - Grid support: 32KB_10ms, snappy compression, 15 партицій
+
+3. **Оптимізації енергетичної інфраструктури:**
+   - Battery SOC аналіз з 70% стисненням для історичних даних
+   - Географічне партиціонування для локальних енергомереж
+   - Unit_type aggregation для різних типів DER пристроїв
+
+### 🎯 Ключові досягнення:
+
+- **Підтримка 1000 DER пристроїв** з поточною конфігурацією
+- **Real-time моніторинг** з <2ms latency для критичних систем
+- **70% економії місця** для battery_soc циклічних даних
+- **1.07x scaling** з оптимальним партиціонуванням
+- **SCADA сумісність** з P95 latency <5ms
+
+### 📈 Вплив на енергетичний сектор:
+
+- **Покращення ефективності** DER систем через оптимізовані конфігурації
+- **Зниження затримок** в real-time моніторингу енергетичних пристроїв
+- **Економія ресурсів** через ефективне стиснення та партиціонування
+- **Масштабованість** для підтримки зростаючої кількості DER пристроїв
 
 ## 🎯 Рекомендації для досягнення цілей
 
@@ -521,10 +476,104 @@ IoT-потоків\
 - Застосовувати `unit_type` партиціонування
 - Використовувати `256KB_50ms` для batch обробки
 
----
-
-> ✅ Система готова для впровадження в production середовище з рекомендованими конфігураціями!
-
 ## 📂 Додатки
 
 ### A. Генератор даних (Python)
+
+```
+def generate_der_data(device_num: int) -> dict:
+device_type = random.choice(["solar_roof", "micro_wind", "battery", "combined"])
+power_output = round(random.uniform(-5.0, 10.0), 2)
+
+    return {
+        "device_id": f"DER_{device_num:04d}",
+        "power_output": power_output,
+        "efficiency": round(random.uniform(80.0, 96.0), 1),
+        "temperature": round(random.uniform(-20.0, 50.0), 1),
+        "voltage": round(random.uniform(220.0, 240.0), 1),
+        "current": round(random.uniform(5.0, 45.0), 1),
+        "status": random.choice(["generating", "consuming", "idle"]),
+        "location": {
+            "lat": round(random.uniform(45.0, 52.0), 4),
+            "lon": round(random.uniform(22.0, 40.0), 4)
+        },
+        "maintenance_hours": random.randint(1000, 8000),
+        "net_power": round(power_output + random.uniform(-0.5, 0.5), 2),
+        "battery_soc": round(random.uniform(0.0, 100.0), 1) if device_type in ["battery", "combined"] else 0.0,
+        "unit_type": device_type,
+        "timestamp": datetime.now().isoformat(),
+        "message_id": str(uuid.uuid4())
+    }
+```
+
+### А.2 Ключові тестові команди
+
+```
+python3 scripts/run_batch_tests.py
+
+python3 scripts/run_compression_tests.py
+
+python3 scripts/run_partitioning_tests.py
+```
+
+### А.3 Приклад згенерованих даних
+
+```[
+  {
+    "device_id": "DER_0001",
+    "power_output": -3.86,
+    "efficiency": 96.0,
+    "temperature": 1.2,
+    "voltage": 227.7,
+    "current": 26.1,
+    "status": "idle",
+    "location": {
+      "lat": 50.4603,
+      "lon": 24.4972
+    },
+    "maintenance_hours": 2454,
+    "net_power": -3.73,
+    "battery_soc": 92.5,
+    "unit_type": "battery",
+    "timestamp": "2025-10-04T18:50:10.385733",
+    "message_id": "7f0d6f7b-f7ba-4a6d-bade-0fad77fffa08"
+  },
+  {
+    "device_id": "DER_0002",
+    "power_output": 3.38,
+    "efficiency": 89.6,
+    "temperature": 25.4,
+    "voltage": 225.8,
+    "current": 25.6,
+    "status": "consuming",
+    "location": {
+      "lat": 47.0597,
+      "lon": 35.2452
+    },
+    "maintenance_hours": 3020,
+    "net_power": 3.44,
+    "battery_soc": 9.8,
+    "unit_type": "battery",
+    "timestamp": "2025-10-04T18:50:10.386561",
+    "message_id": "9613ad6d-ff37-4078-9778-370523ac7401"
+  },
+  {
+    "device_id": "DER_0003",
+    "power_output": 7.38,
+    "efficiency": 82.1,
+    "temperature": 6.1,
+    "voltage": 239.6,
+    "current": 34.6,
+    "status": "consuming",
+    "location": {
+      "lat": 51.3979,
+      "lon": 39.6581
+    },
+    "maintenance_hours": 2727,
+    "net_power": 7.02,
+    "battery_soc": 0.0,
+    "unit_type": "micro_wind",
+    "timestamp": "2025-10-04T18:50:10.386580",
+    "message_id": "a1661436-455d-419f-9765-476fcc888417"
+  }]
+```

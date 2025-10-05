@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-05T02:16:11.137199",
+  "timestamp": "2025-10-05T23:15:39.428869",
   "system_type": "DER Energy Monitoring System",
   "target_devices": 1000,
   "success_criteria": {
@@ -14,11 +14,11 @@
       "priority": "throughput",
       "target_throughput": 2000,
       "batch_config": {
-        "Конфігурація": "256KB_50ms",
-        "Records/sec": 18.65,
-        "Avg Latency (ms)": 53.6,
-        "P50 Latency (ms)": 53.31,
-        "P95 Latency (ms)": 55.58,
+        "Конфігурація": "64KB_50ms",
+        "Records/sec": 18.89,
+        "Avg Latency (ms)": 52.91,
+        "P50 Latency (ms)": 52.83,
+        "P95 Latency (ms)": 53.74,
         "Success Rate (%)": 100.0,
         "Використання": "Batch"
       },
@@ -45,13 +45,13 @@
       "priority": "balanced",
       "target_latency": 5,
       "batch_config": {
-        "Конфігурація": "64KB_0ms",
-        "Records/sec": 502.85,
-        "Avg Latency (ms)": 1.97,
-        "P50 Latency (ms)": 1.86,
-        "P95 Latency (ms)": 2.95,
+        "Конфігурація": "4KB_5ms",
+        "Records/sec": 122.17,
+        "Avg Latency (ms)": 8.17,
+        "P50 Latency (ms)": 8.42,
+        "P95 Latency (ms)": 10.65,
         "Success Rate (%)": 100.0,
-        "Використання": "Real-time"
+        "Використання": "Balanced"
       },
       "compression_config": {
         "Алгоритм": "lz4",
@@ -62,7 +62,13 @@
         "Compression Ratio": 60.0,
         "Рекомендація": "DER aggregation"
       },
-      "partitioning_config": null,
+      "partitioning_config": {
+        "num_partitions": 10,
+        "strategy": "geographic",
+        "throughput_records_per_sec": 300.17,
+        "avg_latency_ms": 3.31,
+        "partition_balance_score": 0.9924
+      },
       "expected_performance": {}
     },
     "grid_support": {
@@ -70,13 +76,13 @@
       "priority": "scada_compatibility",
       "target_p95_latency": 10,
       "batch_config": {
-        "Конфігурація": "4KB_0ms",
-        "Records/sec": 421.72,
-        "Avg Latency (ms)": 2.35,
-        "P50 Latency (ms)": 2.13,
-        "P95 Latency (ms)": 3.96,
+        "Конфігурація": "4KB_1ms",
+        "Records/sec": 297.74,
+        "Avg Latency (ms)": 3.34,
+        "P50 Latency (ms)": 3.23,
+        "P95 Latency (ms)": 4.3,
         "Success Rate (%)": 100.0,
-        "Використання": "Ultra-low"
+        "Використання": "SCADA"
       },
       "compression_config": {
         "Алгоритм": "snappy",
@@ -92,7 +98,7 @@
         "strategy": "round_robin",
         "throughput_records_per_sec": 359.16,
         "avg_latency_ms": 2.77,
-        "partition_balance_score": 0.99
+        "partition_balance_score": 0.9912357142857143
       },
       "expected_performance": {}
     }
@@ -155,7 +161,7 @@
         "strategy": "unit_type",
         "throughput_records_per_sec": 290.19,
         "avg_latency_ms": 3.43,
-        "partition_balance_score": 0.95
+        "partition_balance_score": 1.0
       },
       "throughput_gain": -1.3899999999999864,
       "complexity_increase": 10
