@@ -1,342 +1,339 @@
-# VPP Management System - Варіант 8
+# Лаборторна робота №5
 
-Система моніторингу та управління Virtual Power Plant (VPP) з 1000 розподілених енергетичних ресурсів (DER).
+**Дата виконання:** 23-12-2025  
+**Варіант**: 8 - Розподілені енергетичні ресурси (DER)  
+**Підваріант**: А. VPP управління
 
-## Опис
+## 1. Опис системи
 
-Цей проект реалізує систему моніторингу для VPP, яка управляє:
+### 1.1 Архітектура системи
 
-- 350 сонячних панелей (solar)
-- 250 вітрових турбін (wind)
-- 250 батарейних систем (battery)
-- 150 навантажень (load)
+Система моніторингу та управління Virtual Power Plant (VPP) реалізована для управління 1000 розподілених енергетичних ресурсів (DER), що включають:
 
-Дані генеруються кожну хвилину та відправляються в Kafka, з одночасним експортом метрик в Prometheus.
+- **350 сонячних панелей (solar)** - генерація залежить від часу доби
+- **250 вітрових турбін (wind)** - непередбачувана генерація
+- **250 батарейних систем (battery)** - можуть заряжатися та розряджатися
+- **150 навантажень (load)** - споживання енергії
 
-## Вимоги
+### 1.2 Компоненти системи
 
-- Python 3.8+
-- Apache Kafka (запущений на localhost:9092)
-- Prometheus (встановлений в ~)
-- Grafana (встановлений в ~)
+**1. DER Producer (`der_producer.py`)**
 
-## Швидкий старт
+- Генерує телеметрію для кожного DER кожну хвилину
+- Відправляє дані в Kafka топик `der_telemetry`
+- Експортує метрики Prometheus на порт 8000
+- Агрегує дані на рівні VPP та відправляє в топик `vpp_aggregated`
 
-### Автоматичне встановлення та запуск
+**2. Prometheus**
 
-1. Надайте права виконання скриптам:
+- Збирає метрики з DER Producer кожні 15 секунд
+- Зберігає часові ряди метрик
+- Обчислює алерти згідно з правилами в `alerts.yml`
+- Надає API для запитів PromQL
 
-```bash
-chmod +x *.sh
-```
+**3. Grafana**
 
-2. Встановіть та налаштуйте всі сервіси:
+- Візуалізує метрики через інтерактивний dashboard
+- Підключена до Prometheus як data source
+- Відображає часові ряди, gauge, histogram та таблиці
 
-```bash
-./install_and_setup.sh
-```
+**4. Kafka**
 
-Цей скрипт:
+- Транспортний шар для телеметрії DER
+- Топики: `der_telemetry` (3 партиції), `vpp_aggregated` (1 партиція)
 
-- Встановить Python залежності
-- Завантажить та встановить Kafka (якщо не встановлено)
-- Завантажить та встановить Prometheus (якщо не встановлено)
-- Скопіює конфігурації
+### 1.3 Базові метрики системи
 
-3. Запустіть всі сервіси:
+Кожен DER генерує наступні метрики:
 
-```bash
-./start_services.sh
-```
-
-Цей скрипт запустить:
-
-- Zookeeper
-- Kafka
-- Prometheus
-- Створить необхідні Kafka топики
-
-4. Запустіть DER Producer:
-
-```bash
-./start_producer.sh
-```
-
-Або вручну:
-
-```bash
-python3 der_producer.py
-```
-
-### Ручне встановлення
-
-Якщо ви хочете встановити все вручну:
-
-1. Встановіть Python залежності:
-
-```bash
-pip install -r requirements.txt --break-system-packages
-```
-
-2. Встановіть Kafka (якщо не встановлено):
-
-```bash
-cd ~
-wget https://downloads.apache.org/kafka/2.13-3.6.1/kafka_2.13-3.6.1.tgz
-tar -xzf kafka_2.13-3.6.1.tgz
-export KAFKA_HOME=~/kafka_2.13-3.6.1
-export PATH="$KAFKA_HOME/bin:$PATH"
-```
-
-3. Встановіть Prometheus (якщо не встановлено):
-
-```bash
-cd ~
-wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
-tar -xzf prometheus-2.45.0.linux-amd64.tar.gz
-export PROMETHEUS_HOME=~/prometheus-2.45.0.linux-amd64
-```
-
-4. Скопіюйте конфігурації:
-
-```bash
-cp prometheus.yml "$PROMETHEUS_HOME/"
-cp alerts.yml "$PROMETHEUS_HOME/"
-```
-
-5. Запустіть Zookeeper та Kafka:
-
-```bash
-# В одному терміналі
-cd "$KAFKA_HOME"
-bin/zookeeper-server-start.sh config/zookeeper.properties
-
-# В іншому терміналі
-cd "$KAFKA_HOME"
-bin/kafka-server-start.sh config/server.properties
-```
-
-6. Створіть Kafka топики:
-
-```bash
-"$KAFKA_HOME/bin/kafka-topics.sh" --create --topic der_telemetry --bootstrap-server localhost:9092 --partitions 3 --replication-factor 1
-"$KAFKA_HOME/bin/kafka-topics.sh" --create --topic vpp_aggregated --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-```
-
-7. Запустіть Prometheus:
-
-```bash
-cd "$PROMETHEUS_HOME"
-./prometheus --config.file=prometheus.yml
-```
-
-## Корисні скрипти
-
-- `install_and_setup.sh` - автоматичне встановлення всіх залежностей
-- `start_services.sh` - запуск всіх сервісів (Zookeeper, Kafka, Prometheus)
-- `start_producer.sh` - запуск DER Producer
-- `stop_services.sh` - зупинка всіх сервісів
-- `check_system.sh` - перевірка стану системи
-- `setup_kafka_topics.sh` - створення Kafka топиків
-
-## Перевірка стану
-
-Після запуску всіх сервісів перевірте їх стан:
-
-```bash
-./check_system.sh
-```
-
-Або вручну:
-
-- Prometheus: http://localhost:9090
-- Prometheus метрики: http://localhost:8000/metrics
-- Grafana: http://localhost:3000
-
-### 3. Налаштування Grafana
-
-1. Відкрийте Grafana: http://localhost:3000
-2. Додайте Prometheus як Data Source:
-
-   - Configuration → Data Sources → Add data source
-   - Вибрати Prometheus
-   - URL: http://localhost:9090
-   - Save & Test
-
-3. Імпортуйте Dashboard:
-   - - → Import
-   - Завантажити файл `vpp_dashboard.json`
-   - Або скопіювати JSON вручну
-
-## Структура метрик
-
-### Базові метрики DER
-
-- `der_net_power_kw` - Чиста потужність DER (кВт)
+- `der_net_power_kw` - чиста потужність (+генерація/-споживання)
 - `der_battery_soc_percent` - State of Charge батареї (%)
-- `der_available_flexibility_kw` - Доступна гнучкість (кВт)
-- `der_status` - Статус (1=online, 0=offline, -1=maintenance)
+- `der_available_flexibility_kw` - доступна гнучкість (кВт)
+- `der_status` - статус (1=online, 0=offline, -1=maintenance)
 
-### VPP агреговані метрики
+VPP агрегує:
 
-- `vpp_aggregated_generation_kw` - Агрегована генерація (кВт)
-- `vpp_aggregated_consumption_kw` - Агреговане споживання (кВт)
-- `vpp_net_power_kw` - Чиста потужність VPP (кВт)
-- `vpp_total_flexibility_kw` - Загальна доступна гнучкість (кВт)
-- `vpp_battery_fleet_soc_percent` - Розподіл SOC батарейного флоту (histogram)
+- `vpp_aggregated_generation_kw` - загальна генерація
+- `vpp_aggregated_consumption_kw` - загальне споживання
+- `vpp_net_power_kw` - чиста потужність VPP
+- `vpp_total_flexibility_kw` - загальна доступна гнучкість
+- `vpp_battery_fleet_soc_percent` - розподіл SOC батарейного флоту (histogram)
 
-### Dispatch та Compliance
+## 2. Налаштовані алерти
 
-- `vpp_setpoint_kw` - Setpoint для VPP (кВт)
-- `vpp_actual_power_kw` - Фактична потужність VPP (кВт)
-- `vpp_setpoint_deviation_kw` - Відхилення від setpoint (кВт)
-- `vpp_compliance_percent` - Compliance з setpoint (%)
-- `vpp_dispatch_instruction_compliance` - Compliance з dispatch instruction
+Система налаштована з **13 алертами**, організованими в 7 групах:
 
-### Аналітичні метрики
+### 2.1 Група: vpp_flexibility_alerts
 
-- `vpp_efficiency_percent` - Ефективність VPP (%)
-- `vpp_response_time_seconds` - Response time (секунди)
-- `vpp_flexibility_utilization_percent` - Utilization flexibility (%)
-- `vpp_market_participation_success` - Market participation success
+**Alert: Lack of Flexibility**
 
-## Алерти
+- **Умова**: vpp_total_flexibility_kw < 100
+- **Тривалість**: 2 хвилини
+- **Серйозність**: warning
+- **Призначення**: Попереджає про недостатню гнучкість для управління VPP
 
-Система налаштована з наступними алертами:
+### 2.2 Група: vpp_setpoint_alerts
 
-1. **Недостатня гнучкість**: <100 кВт протягом 2 хвилин
-2. **Відхилення від setpoint**: >50 кВт протягом 5 хвилин
-3. **Багато DER offline**: >10% протягом 3 хвилин
-4. **Не виконано dispatch instruction**: протягом 2 хвилин
-5. **Низька ефективність VPP**: <60% протягом 10 хвилин
-6. **Високий response time**: >300 секунд протягом 5 хвилин
-7. **Низька utilization flexibility**: <30% протягом 15 хвилин
-8. **Невдала market participation**: протягом 10 хвилин
+**Alert: Setpoint Deviation**
 
-Всі алерти налаштовані в файлі `alerts.yml` та автоматично завантажуються Prometheus.
+- **Умова**: abs(vpp_setpoint_deviation_kw) > 50 протягом 5 хвилин
+- **Тривалість**: 5 хвилин
+- **Серйозність**: critical
+- **Призначення**: Критичне відхилення від заданого setpoint
+- **Статус**: 🔴 **ACTIVE** (відхилення: 1893.25 кВт)
 
-## Dashboard панелі
+### 2.3 Група: vpp_der_status_alerts
 
-Grafana dashboard містить:
+**Alert: Many DERs Offline**
 
-1. **Агрегована потужність VPP** (Time Series) - показує генерацію, споживання, чисту потужність та setpoint
-2. **Доступна гнучкість VPP** (Gauge) - поточне значення з порогами
-3. **SOC батарейного флоту** (Histogram) - розподіл State of Charge батарей
-4. **Compliance з setpoint** (Stat) - відсоток відповідності setpoint
-5. **Відхилення від setpoint** (Time Series) - графік відхилень
-6. **Статус DER** (Stat) - відсоток online/offline DER
-7. **Dispatch Instruction Compliance** (Gauge) - виконання dispatch інструкцій
-8. **Ефективність VPP** (Time Series)
-9. **Response Time VPP** (Time Series)
-10. **Utilization Flexibility** (Time Series)
-11. **Market Participation Success** (Stat)
-12. **Розподіл DER за типами** (Table)
-13. **Потужність по типах DER** (Time Series)
-14. **Гнучкість по типах DER** (Time Series)
+- **Умова**: (count(der_status == 0) / count(der_status)) > 0.10
+- **Тривалість**: 3 хвилини
+- **Серйозність**: warning
+- **Призначення**: Більше 10% DER офлайн
 
-## Аналіз
+**Alert: DER in Maintenance**
 
-Система збирає наступні аналітичні метрики:
+- **Умова**: (count(der_status == -1) / count(der_status)) > 0.05
+- **Тривалість**: 5 хвилин
+- **Серйозність**: info
+- **Призначення**: Більше 5% DER в режимі обслуговування
 
-- **Ефективність VPP**: відношення фактичної до потенційної потужності
-- **Response time**: час досягнення setpoint після його зміни
-- **Utilization flexibility**: використання доступної гнучкості
-- **Market participation success**: успішність участі на ринку (compliance > 80%)
+### 2.4 Група: vpp_dispatch_alerts
 
-## Корисні команди
+**Alert: Dispatch Instruction Not Executed**
 
-### Перевірка метрик
+- **Умова**: vpp_dispatch_instruction_compliance == 0 протягом 2 хвилин
+- **Тривалість**: 2 хвилини
+- **Серйозність**: critical
+- **Призначення**: VPP не виконує dispatch інструкції
+- **Статус**: 🔴 **ACTIVE**
 
-```bash
-curl http://localhost:8000/metrics | grep vpp
+### 2.5 Група: vpp_performance_alerts
+
+**Alert: Low VPP Efficiency**
+
+- **Умова**: vpp_efficiency_percent < 60 протягом 10 хвилин
+- **Тривалість**: 10 хвилин
+- **Серйозність**: warning
+- **Призначення**: Ефективність VPP нижча за поріг
+- **Статус**: 🔴 **ACTIVE** (ефективність: 24.58%)
+
+**Alert: High Response Time**
+
+- **Умова**: vpp_response_time_seconds > 300 протягом 5 хвилин
+- **Тривалість**: 5 хвилин
+- **Серйозність**: warning
+- **Призначення**: Система повільно реагує на зміни
+
+**Alert: Low Flexibility Utilization**
+
+- **Умова**: vpp_flexibility_utilization_percent < 30 протягом 15 хвилин
+- **Тривалість**: 15 хвилин
+- **Серйозність**: info
+- **Призначення**: Низьке використання доступної гнучкості
+- **Статус**: 🔴 **ACTIVE** (utilization: 8.81%)
+
+**Alert: Failed Market Participation**
+
+- **Умова**: vpp_market_participation_success == 0 протягом 10 хвилин
+- **Тривалість**: 10 хвилин
+- **Серйозність**: warning
+- **Призначення**: VPP не виконує вимоги ринку
+
+### 2.6 Група: vpp_compliance_alerts
+
+**Alert: Low Compliance Setpoint**
+
+- **Умова**: vpp_compliance_percent < 70 протягом 5 хвилин
+- **Тривалість**: 5 хвилин
+- **Серйозність**: warning
+- **Призначення**: Низький compliance з setpoint
+
+### 2.7 Група: der_individual_alerts
+
+**Alert: Critically Low SOC**
+
+- **Умова**: der_battery_soc_percent < 10 протягом 5 хвилин
+- **Серйозність**: warning
+- **Призначення**: Критично низький рівень заряду батареї
+
+**Alert: Critically High SOC**
+
+- **Умова**: der_battery_soc_percent > 95 протягом 5 хвилин
+- **Серйозність**: info
+- **Призначення**: Можлива перезарядка батареї
+
+### 2.8 Група: system_alerts
+
+**Alert: Missing Producer Data**
+
+- **Умова**: up{job="der-producer"} == 0 протягом 1 хвилини
+- **Серйозність**: critical
+- **Призначення**: Producer не працює
+
+**Alert: Missing DER Metrics**
+
+- **Умова**: count(der_net_power_kw) == 0 протягом 2 хвилин
+- **Серйозність**: critical
+- **Призначення**: Немає даних від DER
+
+### 2.9 Статистика алертів
+
+- **Активних алертів (firing)**: 4
+- **Inactive алертів**: 9
+- **Критичних алертів**: 2 (Setpoint Deviation, Dispatch Instruction Not Executed)
+
+## 3. Dashboard панелі та PromQL запити
+
+Dashboard VPP містить **13 панелей** для моніторингу системи:
+
+| №   | Панель                              | Тип         | PromQL Запит                                                                                                                                   | Призначення                                                                            | Зображення             |
+| --- | ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------- |
+| 1   | **Агрегована потужність VPP**       | Time Series | `vpp_net_power_kw`<br>`vpp_aggregated_generation_kw`<br>`vpp_aggregated_consumption_kw`<br>`vpp_setpoint_kw`                                   | Відображає динаміку потужності VPP у часі, порівняння фактичної потужності з setpoint. | ![1](./images/1.png)   |
+| 2   | **Доступна гнучкість VPP**          | Gauge       | `vpp_total_flexibility_kw`                                                                                                                     | Візуалізує поточну доступну гнучкість з кольоровими індикаторами.                      | ![2](./images/2.png)   |
+| 3   | **Compliance з setpoint**           | Stat        | `vpp_compliance_percent`                                                                                                                       | Відображає відсоток відповідності фактичної потужності setpoint.                       | ![4](./images/4.png)   |
+| 4   | **Відхилення від setpoint**         | Time Series | `abs(vpp_setpoint_deviation_kw)`<br>`50`                                                                                                       | Графік відхилень від setpoint з порогом 50 кВт.                                        | ![5](./images/5.png)   |
+| 5   | **Статус DER (Stat)**               | Stat        | `count(der_status == 1) / count(der_status) * 100`<br>`count(der_status == 0) / count(der_status) * 100`                                       | Показує розподіл DER за статусами (online/offline).                                    | ![6](./images/6.png)   |
+| 6   | **Dispatch Instruction Compliance** | Gauge       | `vpp_dispatch_instruction_compliance`                                                                                                          | Індикатор виконання dispatch інструкцій (1=compliant, 0=non-compliant).                | ![7](./images/7.png)   |
+| 7   | **Ефективність VPP**                | Time Series | `vpp_efficiency_percent`                                                                                                                       | Відображає ефективність VPP у часі (відношення фактичної до потенційної потужності).   | ![8](./images/8.png)   |
+| 8   | **Response Time VPP**               | Time Series | `vpp_response_time_seconds`                                                                                                                    | Час досягнення setpoint після його зміни.                                              | ![9](./images/9.png)   |
+| 9   | **Utilization Flexibility**         | Time Series | `vpp_flexibility_utilization_percent`                                                                                                          | Відсоток використання доступної гнучкості.                                             | ![10](./images/10.png) |
+| 10  | **Market Participation Success**    | Stat        | `vpp_market_participation_success`                                                                                                             | Індикатор успішності участі на ринку (1=success, 0=failure).                           | ![11](./images/11.png) |
+| 11  | **Розподіл DER за типами**          | Table       | `count by (device_type) (der_net_power_kw)`                                                                                                    | Таблиця з кількістю DER кожного типу (solar, wind, battery, load).                     | ![12](./images/12.png) |
+| 12  | **Гнучкість по типах DER**          | Time Series | `sum by (device_type) (der_available_flexibility_kw)`                                                                                          | Графік доступної гнучкості по типах DER.                                               | ![14](./images/14.png) |
+| 13  | **SOC батарейного флоту**           | Time Series | `avg(der_battery_soc_percent)`<br>`min(der_battery_soc_percent)`<br>`max(der_battery_soc_percent)`<br>`quantile(0.5, der_battery_soc_percent)` | Альтернативне відображення SOC батарейного флоту з агрегованими значеннями.            | ![15](./images/15.png) |
+
+## 4. Аналіз ефективності системи
+
+### 4.1 Поточний стан системи
+
+#### Базові показники:
+
+- **Чиста потужність VPP**: 8119.63 кВт
+- **Агрегована генерація**: 20575.26 кВт
+- **Агреговане споживання**: 12455.63 кВт
+- **Доступна гнучкість**: 21500.75 кВт
+- **Setpoint**: 6226.38 кВт
+- **Відхилення від setpoint**: 1893.25 кВт
+
+#### Статус DER:
+
+- **Всього DER**: 1000
+- **Online**: 947 (94.7%)
+- **Offline**: 44 (4.4%)
+- **Maintenance**: ~9 (0.9%)
+
+### 4.2 Аналіз ефективності VPP
+
+**Ефективність VPP: 24.58%**
+
+Ефективність розраховується як відношення фактичної потужності до потенційної:
+
+```
+Ефективність = |Чиста потужність| / (Генерація + Споживання) × 100%
+Ефективність = 8119.63 / (20575.26 + 12455.63) × 100% = 24.58%
 ```
 
-### Перевірка Prometheus targets
+**Висновок**: Ефективність значно нижча за поріг 60%, що вказує на:
 
-```bash
-curl http://localhost:9090/api/v1/targets
-```
+- Неврахування частини потенційної потужності
+- Можливі втрати при агрегації
+- Неоптимальне використання ресурсів
 
-### Перевірка алертів
+### 4.3 Аналіз Utilization Flexibility
 
-Відкрийте: http://localhost:9090/alerts
+**Utilization Flexibility: 8.81%**
 
-### PromQL запити для тестування
+Використання доступної гнучкості становить лише 8.81%, що значно нижче порогу 30%.
 
-Середня потужність VPP:
+**Висновок**: Система має значний резерв гнучкості (21500.75 кВт), але використовує лише невелику частину. Це може вказувати на:
 
-```promql
-avg(vpp_net_power_kw)
-```
+- Консервативну стратегію управління
+- Недостатню оптимізацію використання гнучкості
+- Можливість покращення ефективності через активніше використання гнучкості
 
-Загальна гнучкість:
+### 4.4 Аналіз Market Participation
 
-```promql
-sum(vpp_total_flexibility_kw)
-```
+**Market Participation Success: 0**
 
-Відсоток online DER:
+Система не виконує вимоги ринку, оскільки compliance з setpoint становить 69.59%, що нижче порогу 80%.
 
-```promql
-count(der_status == 1) / count(der_status) * 100
-```
+### 4.5 Аналіз Compliance з Setpoint
 
-Compliance з setpoint:
+**Compliance: 69.59%**
 
-```promql
-vpp_compliance_percent
-```
+Відсоток відповідності фактичної потужності setpoint становить 69.59%, що нижче порогу 70%.
 
-## Перегляд алертів та експорт даних
+### 4.6 Аналіз стабільності системи
 
-### Перегляд алертів:
+**Статус DER: 94.7% online**
 
-Дивіться детальні інструкції в **`VIEW_ALERTS.md`**
+94.7% DER працюють у режимі online, що є хорошим показником стабільності системи.
 
-Основні способи:
+**Висновок**: Система демонструє високу доступність та стабільність. Лише 4.4% DER знаходяться в режимі offline, що не перевищує поріг 10%.
 
-- Prometheus UI: http://localhost:9090 → вкладка "Alerts"
-- Grafana: Alerting → Alert rules
-- Командний рядок: `curl http://localhost:9090/api/v1/alerts`
+## 5. Досягнуті результати
 
-### Експорт даних для аналізу:
+### 5.1 Технічні досягнення
 
-Дивіться детальні інструкції в **`GET_DATA_FOR_ANALYSIS.md`**
+**Реалізовано систему моніторингу VPP**
 
-Швидкий експорт:
+- Створено producer для генерації даних 1000 DER
+- Налаштовано збір метрик через Prometheus
+- Реалізовано агрегацію даних на рівні VPP
+- Інтегровано з Kafka для транспорту даних
 
-```bash
-./export_data.sh
-```
+**Створено комплексний Dashboard**
 
-Це створить файли в `exported_data/`:
+- 13 панелей для візуалізації метрик
+- Різноманітні типи візуалізації (Time Series, Gauge, Histogram, Stat, Table)
+- Інтерактивні графіки з можливістю масштабування
+- Автоматичне оновлення кожні 10 секунд
 
-- `metrics_export_*.json` - всі метрики
-- `report_*.txt` - текстовий звіт зі статистикою
+**Налаштовано систему алертування**
 
-## Структура файлів
+- 13 алертів для різних сценаріїв
+- Організовані в 7 груп за категоріями
+- Різні рівні серйозності (critical, warning, info)
+- Детальні описи та анотації
 
-```
-.
-├── der_producer.py          # Головний producer для генерації даних DER
-├── prometheus.yml           # Конфігурація Prometheus
-├── alerts.yml               # Правила алертування
-├── vpp_dashboard.json       # Grafana dashboard
-├── requirements.txt         # Python залежності
-├── install_and_setup.sh     # Автоматичне встановлення
-├── start_services.sh        # Запуск сервісів
-├── start_producer.sh        # Запуск producer
-├── stop_services.sh         # Зупинка сервісів
-├── check_system.sh          # Перевірка стану
-├── setup_kafka_topics.sh    # Створення топиків
-├── export_data.sh           # Експорт даних для аналізу
-├── VIEW_ALERTS.md           # Інструкції по перегляду алертів
-├── GET_DATA_FOR_ANALYSIS.md # Інструкції по експорту даних
-├── QUICKSTART.md            # Швидкий старт
-└── README.md               # Цей файл
-```
+**Реалізовано аналітичні метрики**
 
-## Автор
+- Ефективність VPP
+- Response time
+- Utilization flexibility
+- Market participation success
 
-Створено для лабораторної роботи No5 - Моніторинг та алертинг енергетичних систем
-Варіант 8: Розподілені енергетичні ресурси (DER) - VPP управління
+## 6. Висновки
+
+### 6.1 Сильні сторони системи
+
+1. **Висока доступність DER**: 94.7% пристроїв працюють у режимі online, що забезпечує стабільність системи.
+
+2. **Швидкий response time**: 117.48 секунд - система швидко реагує на зміни, що дозволяє ефективно керувати VPP у реальному часі.
+
+3. **Значний резерв гнучкості**: 21500.75 кВт доступної гнучкості забезпечує можливість маневрування та компенсації відхилень.
+
+4. **Комплексний моніторинг**: Система забезпечує повне покриття всіх аспектів роботи VPP через різноманітні метрики та панелі.
+
+5. **Ефективна система алертування**: 13 налаштованих алертів дозволяють своєчасно виявляти проблеми та реагувати на них.
+
+### 6.2 Області для покращення
+
+1. **Ефективність VPP (24.58%)**: Значно нижча за поріг 60%. Потрібна оптимізація алгоритмів агрегації та використання ресурсів.
+
+2. **Compliance з setpoint (69.59%)**: Нижче порогу 70%. Потрібно покращити точність дотримання setpoint через:
+
+   - Покращення алгоритмів управління
+   - Активніше використання гнучкості
+   - Оптимізацію роботи батарей
+
+3. **Utilization flexibility (8.81%)**: Низьке використання доступної гнучкості. Потрібна більш агресивна стратегія використання ресурсів.
+
+4. **Market participation**: Система не виконує вимоги ринку через низький compliance. Потрібні додаткові зусилля для досягнення 80%+ compliance.
+
+### 6.3 Висновок
+
+Система моніторингу та управління VPP успішно реалізована. Система забезпечує комплексний моніторинг 1000 DER, агрегацію даних на рівні VPP, налаштовані алерти та детальну аналітику.
+
+Система готова до використання та має значний потенціал для подальшого покращення через оптимізацію алгоритмів та активніше використання доступних ресурсів.
