@@ -1,0 +1,584 @@
+{
+  "title": "VPP Dashboard - Virtual Power Plant Management",
+  "tags": [
+    "vpp",
+    "der",
+    "energy"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "type": "timeseries",
+      "title": "Агрегована потужність VPP (Time Series)",
+      "targets": [
+        {
+          "expr": "vpp_net_power_kw",
+          "legendFormat": "Чиста потужність VPP",
+          "refId": "A"
+        },
+        {
+          "expr": "vpp_aggregated_generation_kw",
+          "legendFormat": "Агрегована генерація",
+          "refId": "B"
+        },
+        {
+          "expr": "vpp_aggregated_consumption_kw",
+          "legendFormat": "Агреговане споживання",
+          "refId": "C"
+        },
+        {
+          "expr": "vpp_setpoint_kw",
+          "legendFormat": "Setpoint",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilowatts",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "type": "gauge",
+      "title": "Доступна гнучкість VPP (Gauge)",
+      "targets": [
+        {
+          "expr": "vpp_total_flexibility_kw",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilowatts",
+          "min": 0,
+          "max": 10000,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 100,
+                "color": "yellow"
+              },
+              {
+                "value": 500,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "type": "histogram",
+      "title": "SOC батарейного флоту (Histogram)",
+      "targets": [
+        {
+          "expr": "sum(rate(vpp_battery_fleet_soc_percent_bucket[5m])) by (le)",
+          "format": "heatmap",
+          "legendFormat": "{{le}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "continuous-blues"
+          }
+        }
+      },
+      "options": {
+        "bucketOffset": 0,
+        "bucketSize": 10,
+        "calculate": false
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
+      "type": "timeseries",
+      "title": "SOC батарейного флоту (Time Series - альтернатива)",
+      "targets": [
+        {
+          "expr": "avg(der_battery_soc_percent)",
+          "legendFormat": "Середній SOC",
+          "refId": "A"
+        },
+        {
+          "expr": "min(der_battery_soc_percent)",
+          "legendFormat": "Мінімальний SOC",
+          "refId": "B"
+        },
+        {
+          "expr": "max(der_battery_soc_percent)",
+          "legendFormat": "Максимальний SOC",
+          "refId": "C"
+        },
+        {
+          "expr": "quantile(0.5, der_battery_soc_percent)",
+          "legendFormat": "Медіана SOC",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "type": "stat",
+      "title": "Compliance з setpoint (%)",
+      "targets": [
+        {
+          "expr": "vpp_compliance_percent",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 80,
+                "color": "green"
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "type": "timeseries",
+      "title": "Відхилення від setpoint",
+      "targets": [
+        {
+          "expr": "abs(vpp_setpoint_deviation_kw)",
+          "legendFormat": "Відхилення",
+          "refId": "A"
+        },
+        {
+          "expr": "50",
+          "legendFormat": "Поріг (50 кВт)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilowatts",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 50,
+                "color": "yellow"
+              },
+              {
+                "value": 100,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "type": "stat",
+      "title": "Статус DER (Online/Offline)",
+      "targets": [
+        {
+          "expr": "count(der_status == 1) / count(der_status) * 100",
+          "legendFormat": "Online %",
+          "refId": "A"
+        },
+        {
+          "expr": "count(der_status == 0) / count(der_status) * 100",
+          "legendFormat": "Offline %",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "type": "gauge",
+      "title": "Dispatch Instruction Compliance",
+      "targets": [
+        {
+          "expr": "vpp_dispatch_instruction_compliance",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "type": "timeseries",
+      "title": "Ефективність VPP",
+      "targets": [
+        {
+          "expr": "vpp_efficiency_percent",
+          "legendFormat": "Ефективність",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "type": "timeseries",
+      "title": "Response Time VPP",
+      "targets": [
+        {
+          "expr": "vpp_response_time_seconds",
+          "legendFormat": "Response Time",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "type": "timeseries",
+      "title": "Utilization Flexibility",
+      "targets": [
+        {
+          "expr": "vpp_flexibility_utilization_percent",
+          "legendFormat": "Utilization",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "type": "stat",
+      "title": "Market Participation Success",
+      "targets": [
+        {
+          "expr": "vpp_market_participation_success",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "type": "table",
+      "title": "Розподіл DER за типами",
+      "targets": [
+        {
+          "expr": "count by (device_type) (der_net_power_kw)",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "list"
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 46
+      },
+      "type": "timeseries",
+      "title": "Потужність по типах DER",
+      "targets": [
+        {
+          "expr": "sum by (device_type) (der_net_power_kw)",
+          "legendFormat": "{{device_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilowatts"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 46
+      },
+      "type": "timeseries",
+      "title": "Гнучкість по типах DER",
+      "targets": [
+        {
+          "expr": "sum by (device_type) (der_available_flexibility_kw)",
+          "legendFormat": "{{device_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kilowatts"
+        }
+      }
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Alerts",
+        "datasource": "Prometheus",
+        "enable": true,
+        "iconColor": "red",
+        "target": {
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "refId": "A"
+        }
+      }
+    ]
+  },
+  "links": []
+}

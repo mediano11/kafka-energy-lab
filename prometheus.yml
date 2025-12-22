@@ -1,0 +1,30 @@
+# Prometheus конфігурація для VPP моніторингу
+global:
+  scrape_interval: 15s      # Збирати метрики кожні 15 секунд
+  evaluation_interval: 15s  # Перевіряти алерти кожні 15 секунд
+  external_labels:
+    cluster: 'vpp-cluster'
+    environment: 'production'
+
+# Файли з правилами алертування
+rule_files:
+  - 'alerts.yml'
+
+# Звідки збирати метрики
+scrape_configs:
+  # Prometheus моніторить сам себе
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          instance: 'prometheus-server'
+
+  # DER Producer з метриками
+  - job_name: 'der-producer'
+    static_configs:
+      - targets: ['localhost:8000']
+        labels:
+          instance: 'der-producer'
+          service: 'energy-vpp'
+    scrape_interval: 10s  # Частіше збирати метрики для VPP
+

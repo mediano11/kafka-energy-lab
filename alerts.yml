@@ -1,0 +1,204 @@
+# Alerting rules для VPP управління (Варіант 8)
+groups:
+  - name: vpp_flexibility_alerts
+    interval: 30s
+    rules:
+      # Алерт 1: Недостатня гнучкість: <100 кВт
+      - alert: НедостатняГнучкість
+        expr: vpp_total_flexibility_kw < 100
+        for: 2m
+        labels:
+          severity: warning
+          system: vpp
+          category: flexibility
+        annotations:
+          summary: "Недостатня гнучкість VPP"
+          description: "Доступна гнучкість VPP становить {{ $value }} кВт, що менше порогу 100 кВт"
+
+  - name: vpp_setpoint_alerts
+    interval: 30s
+    rules:
+      # Алерт 2: Відхилення від setpoint: >50 кВт протягом 5 хвилин
+      - alert: ВідхиленняВідSetpoint
+        expr: abs(vpp_setpoint_deviation_kw) > 50
+        for: 5m
+        labels:
+          severity: critical
+          system: vpp
+          category: setpoint
+        annotations:
+          summary: "Відхилення від setpoint перевищує поріг"
+          description: "Відхилення від setpoint становить {{ $value }} кВт протягом 5 хвилин (поріг: 50 кВт). Setpoint: {{ $labels.setpoint_kw }}, Фактична: {{ $labels.actual_power_kw }}"
+
+  - name: vpp_der_status_alerts
+    interval: 30s
+    rules:
+      # Алерт 3: Багато DER offline: >10%
+      - alert: БагатоДерOffline
+        expr: |
+          (
+            count(der_status == 0) 
+            / 
+            count(der_status)
+          ) > 0.10
+        for: 3m
+        labels:
+          severity: warning
+          system: vpp
+          category: availability
+        annotations:
+          summary: "Більше 10% DER офлайн"
+          description: "Відсоток офлайн DER: {{ $value | humanizePercentage }} (поріг: 10%)"
+
+      # Алерт для DER в maintenance
+      - alert: ДерВMaintenance
+        expr: |
+          (
+            count(der_status == -1) 
+            / 
+            count(der_status)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: info
+          system: vpp
+          category: maintenance
+        annotations:
+          summary: "Більше 5% DER в режимі обслуговування"
+          description: "Відсоток DER в maintenance: {{ $value | humanizePercentage }}"
+
+  - name: vpp_dispatch_alerts
+    interval: 30s
+    rules:
+      # Алерт 4: Не виконано dispatch instruction
+      - alert: НеВиконаноDispatchInstruction
+        expr: vpp_dispatch_instruction_compliance == 0
+        for: 2m
+        labels:
+          severity: critical
+          system: vpp
+          category: dispatch
+        annotations:
+          summary: "Не виконано dispatch instruction"
+          description: "VPP не виконує dispatch instruction протягом 2 хвилин. Compliance: {{ $value }}"
+
+  - name: vpp_performance_alerts
+    interval: 30s
+    rules:
+      # Алерт: Низька ефективність VPP
+      - alert: НизькаЕфективністьVPP
+        expr: vpp_efficiency_percent < 60
+        for: 10m
+        labels:
+          severity: warning
+          system: vpp
+          category: performance
+        annotations:
+          summary: "Низька ефективність VPP"
+          description: "Ефективність VPP становить {{ $value }}% (поріг: 60%)"
+
+      # Алерт: Високий response time
+      - alert: ВисокийResponseTime
+        expr: vpp_response_time_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          system: vpp
+          category: performance
+        annotations:
+          summary: "Високий response time VPP"
+          description: "Response time VPP становить {{ $value }} секунд (поріг: 300 сек)"
+
+      # Алерт: Низька utilization flexibility
+      - alert: НизькаUtilizationFlexibility
+        expr: vpp_flexibility_utilization_percent < 30
+        for: 15m
+        labels:
+          severity: info
+          system: vpp
+          category: performance
+        annotations:
+          summary: "Низька utilization flexibility"
+          description: "Utilization flexibility становить {{ $value }}% (поріг: 30%)"
+
+      # Алерт: Невдала market participation
+      - alert: НевдалаMarketParticipation
+        expr: vpp_market_participation_success == 0
+        for: 10m
+        labels:
+          severity: warning
+          system: vpp
+          category: market
+        annotations:
+          summary: "Невдала market participation"
+          description: "VPP не виконує вимоги ринку (compliance < 80%) протягом 10 хвилин"
+
+  - name: vpp_compliance_alerts
+    interval: 30s
+    rules:
+      # Алерт: Низький compliance з setpoint
+      - alert: НизькийComplianceSetpoint
+        expr: vpp_compliance_percent < 70
+        for: 5m
+        labels:
+          severity: warning
+          system: vpp
+          category: compliance
+        annotations:
+          summary: "Низький compliance з setpoint"
+          description: "Compliance з setpoint становить {{ $value }}% (поріг: 70%)"
+
+  - name: der_individual_alerts
+    interval: 30s
+    rules:
+      # Алерт: Критично низький SOC батареї
+      - alert: КритичноНизькийSOC
+        expr: der_battery_soc_percent < 10
+        for: 5m
+        labels:
+          severity: warning
+          system: der
+          category: battery
+        annotations:
+          summary: "Критично низький SOC батареї"
+          description: "Батарея DER {{ $labels.der_id }} має SOC {{ $value }}% (критичний поріг: 10%)"
+
+      # Алерт: Критично високий SOC батареї
+      - alert: КритичноВисокийSOC
+        expr: der_battery_soc_percent > 95
+        for: 5m
+        labels:
+          severity: info
+          system: der
+          category: battery
+        annotations:
+          summary: "Критично високий SOC батареї"
+          description: "Батарея DER {{ $labels.der_id }} має SOC {{ $value }}% (можлива перезарядка)"
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Алерт: Відсутність даних від producer
+      - alert: ВідсутністьДанихProducer
+        expr: up{job="der-producer"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          system: monitoring
+          category: availability
+        annotations:
+          summary: "DER Producer не працює"
+          description: "Збір даних з DER producer зупинено. Перевірте сервіс на localhost:8000"
+
+      # Алерт: Немає метрик від DER
+      - alert: НемаєМетрикDER
+        expr: count(der_net_power_kw) == 0
+        for: 2m
+        labels:
+          severity: critical
+          system: monitoring
+          category: data
+        annotations:
+          summary: "Немає метрик від DER"
+          description: "Не отримано жодних метрик від DER протягом 2 хвилин"
+
